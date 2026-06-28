@@ -6,7 +6,7 @@
 |---|---|---|
 | Backend | Node.js + Express + TypeScript | Proceso persistente real (necesario para `node-cron`), tipado para una lógica de sync/scoring que debe ser correcta. |
 | Base de datos | PostgreSQL vía `pg` (node-postgres) con SQL explícito | Persistencia real, gratis en Neon/Supabase sin tarjeta de crédito. Se descartó SQLite porque en el hosting recomendado (Render free) el filesystem es efímero entre deploys/restarts. Se evaluó Prisma, pero se optó por `pg` puro para no depender de la descarga de su binario nativo de query-engine (un punto de fallo extra en redes con proxy/firewall corporativo) — con 5 tablas, SQL explícito en `db/schema.sql` + `src/repo.ts` es más simple y igual de mantenible. |
-| Scheduler | `node-cron` dentro del mismo proceso Express | Evita depender de un segundo servicio; configurable por `SYNC_INTERVAL_MINUTES`. En producción se puede mover a un "Cron Job" nativo de Render que llame a `POST /api/admin/sync/run` si se prefiere desacoplar. |
+| Scheduler | `setInterval` dentro del mismo proceso Express | Corre la sincronización cada `SYNC_INTERVAL_MINUTES` (cualquier valor; se evitó una expresión cron `*/N` porque el campo de minutos sólo va 0–59 y disparaba mal para 45 o cualquier N>60). Hace una corrida inicial ~10s tras arrancar. En producción se puede mover a un "Cron Job" nativo de Render que llame a `POST /api/admin/sync/run` si se prefiere desacoplar. |
 | Frontend | React + Vite + TypeScript | SPA liviana, mobile-first, sin necesidad de SSR para un grupo de <10 personas. |
 | Tests | Vitest | Rápido, ESM/TS nativo, usado para `scoring` y `sync` (lógica pura, sin DB). |
 

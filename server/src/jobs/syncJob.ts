@@ -1,4 +1,3 @@
-import cron from "node-cron";
 import { env } from "../env.js";
 import { createFixturesProvider } from "../services/fixturesProvider/index.js";
 import { computeSyncPlan } from "../services/sync.js";
@@ -58,16 +57,26 @@ export async function runSync(): Promise<SyncRunResult> {
 }
 
 export function scheduleSyncJob(): void {
-  const intervalMinutes = Math.max(1, env.SYNC_INTERVAL_MINUTES);
-  const expression = `*/${intervalMinutes} * * * *`;
+  const intervalMinutes = Number.isFinite(env.SYNC_INTERVAL_MINUTES)
+    ? Math.max(1, Math.floor(env.SYNC_INTERVAL_MINUTES))
+    : 45;
 
-  cron.schedule(expression, () => {
+  // setInterval en vez de una expresión cron `*/N`: el campo de minutos de cron
+  // sólo va de 0 a 59, así que `*/45` dispararía en :00 y :45 (no cada 45 min) y
+  // cualquier N > 60 degradaría a una vez por hora. setInterval respeta "cada N
+  // minutos" para cualquier valor configurado.
+  const safeRun = () => {
     runSync().catch((err) => {
-      // No debería llegar acá (runSync atrapa sus propios errores), pero por si acaso
-      // no se cae el proceso por un fallo inesperado del job programado.
+      // runSync atrapa sus propios errores; esto es sólo un cinturón extra para
+      // que un fallo inesperado nunca tumbe el proceso.
       console.error("Error inesperado en el job de sincronización:", err);
     });
-  });
+  };
+
+  // Una corrida inicial poco después de arrancar deja la base al día sin esperar
+  // el primer intervalo (útil cuando el hosting free duerme y despierta por tráfico).
+  setTimeout(safeRun, 10_000);
+  setInterval(safeRun, intervalMinutes * 60_000);
 
   console.log(`Job de sincronización programado cada ${intervalMinutes} minuto(s).`);
 }

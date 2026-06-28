@@ -80,15 +80,15 @@ export async function deletePlayer(id: string): Promise<void> {
   await pool.query("DELETE FROM players WHERE id = $1", [id]);
 }
 
-export async function listPlayersWithPredictionCounts(): Promise<Array<PlayerRow & { predictionsCount: number }>> {
+export async function listPlayersWithPredictionCounts(): Promise<Array<PlayerRow & { predictionCount: number }>> {
   const { rows } = await pool.query(`
-    SELECT p.id, p.name, COUNT(pr.id)::int AS predictions_count
+    SELECT p.id, p.name, COUNT(pr.id)::int AS prediction_count
     FROM players p
     LEFT JOIN predictions pr ON pr.player_id = p.id
     GROUP BY p.id, p.name
     ORDER BY p.name ASC
   `);
-  return rows.map((r) => ({ id: r.id, name: r.name, predictionsCount: r.predictions_count }));
+  return rows.map((r) => ({ id: r.id, name: r.name, predictionCount: r.prediction_count }));
 }
 
 // --- Matches -------------------------------------------------------------

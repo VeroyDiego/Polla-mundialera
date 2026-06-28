@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DigitCellInput, DigitCellStatic, DigitSeparator } from "./DigitCell";
 import { formatKickoff } from "../utils/time";
 import type { MatchView } from "../types";
@@ -9,6 +9,8 @@ interface MatchCardProps {
   onSaved: (match: MatchView) => void;
 }
 
+const KICKOFF_PASSED_MESSAGE = "Este partido ya empezó: no se puede pronosticar.";
+
 export function MatchCard({ match, onSaved }: MatchCardProps) {
   const [homeScore, setHomeScore] = useState<number | "">(match.myPrediction?.homeScore ?? "");
   const [awayScore, setAwayScore] = useState<number | "">(match.myPrediction?.awayScore ?? "");
@@ -16,11 +18,30 @@ export function MatchCard({ match, onSaved }: MatchCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const locked = match.revealed;
+  const kickoffMs = new Date(match.kickoffUtc).getTime();
+  // El servidor es la autoridad (rechaza con 409 tras el kickoff), pero también
+  // bloqueamos en el cliente para que la UI no permita ni intentar editar.
+  const [kickoffReached, setKickoffReached] = useState(() => Date.now() >= kickoffMs);
+
+  // Si la página queda abierta cruzando la hora de inicio, se auto-bloquea
+  // exactamente en el kickoff sin necesidad de recargar.
+  useEffect(() => {
+    if (kickoffReached) return;
+    const msUntilKickoff = kickoffMs - Date.now();
+    const timer = setTimeout(() => setKickoffReached(true), Math.max(0, msUntilKickoff));
+    return () => clearTimeout(timer);
+  }, [kickoffMs, kickoffReached]);
+
+  const locked = match.revealed || kickoffReached;
   const canSave = !locked && homeScore !== "" && awayScore !== "" && !saving;
 
   async function handleSave() {
     if (homeScore === "" || awayScore === "") return;
+    if (Date.now() >= kickoffMs) {
+      setKickoffReached(true);
+      setError(KICKOFF_PASSED_MESSAGE);
+      return;
+    }
     setSaving(true);
     setError(null);
     setSaved(false);
