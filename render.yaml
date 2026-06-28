@@ -9,7 +9,11 @@ services:
     plan: free
     region: oregon
     buildCommand: npm run build
-    startCommand: npm run migrate && npm run start
+    # El arranque NO corre `migrate`: las tablas ya existen y, si la base (Neon
+    # free) está suspendida, una migración fallida al arrancar tumbaría el deploy.
+    # El servidor levanta sin tocar la base (la conexión es perezosa, por request).
+    # Para aplicar cambios de esquema, correr `npm run migrate` a mano (Render Shell).
+    startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
