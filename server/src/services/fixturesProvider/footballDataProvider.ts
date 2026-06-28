@@ -110,19 +110,25 @@ export class FootballDataProvider implements FixturesProvider {
     }
 
     const fixtures: NormalizedFixture[] = [];
+    const stageCounts = new Map<string, number>();
+    const unknownStages = new Set<string>();
+    let missingTeams = 0;
+
     for (const match of body.matches) {
+      stageCounts.set(match.stage, (stageCounts.get(match.stage) ?? 0) + 1);
+
       if (IGNORED_STATUSES.has(match.status)) continue;
 
       const round = STAGE_TO_ROUND[match.stage];
       if (!round) {
-        this.options.onWarning?.(`Stage desconocido de football-data.org: "${match.stage}" (match id ${match.id})`);
+        unknownStages.add(match.stage);
         continue;
       }
 
       const homeTeam = match.homeTeam?.name ?? match.homeTeam?.shortName;
       const awayTeam = match.awayTeam?.name ?? match.awayTeam?.shortName;
       if (!homeTeam || !awayTeam) {
-        this.options.onWarning?.(`Partido ${match.id} sin nombre de equipo, se omite`);
+        missingTeams += 1;
         continue;
       }
 
@@ -138,6 +144,23 @@ export class FootballDataProvider implements FixturesProvider {
         homeScore: match.score?.fullTime?.home ?? undefined,
         awayScore: match.score?.fullTime?.away ?? undefined
       });
+    }
+
+    // Diagnóstico: si no salió nada utilizable (o hubo rondas no reconocidas),
+    // registramos en el SyncLog qué devolvió realmente la API (cuántos partidos y
+    // con qué nombres de `stage`), para poder ajustar el mapeo de un vistazo. En
+    // operación normal (todo reconocido y con partidos) no agrega ruido.
+    if (fixtures.length === 0 || unknownStages.size > 0) {
+      const stageBreakdown =
+        [...stageCounts.entries()].map(([stage, count]) => `${stage}: ${count}`).join(", ") || "ninguno";
+      const unknownNote =
+        unknownStages.size > 0 ? `. Rondas no reconocidas: ${[...unknownStages].join(", ")}` : "";
+      this.options.onWarning?.(
+        `football-data devolvió ${body.matches.length} partido(s) [${stageBreakdown}]; ${fixtures.length} utilizable(s)${unknownNote}`
+      );
+    }
+    if (missingTeams > 0) {
+      this.options.onWarning?.(`${missingTeams} partido(s) sin nombre de equipo, omitidos.`);
     }
 
     return fixtures;
