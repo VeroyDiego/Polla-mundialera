@@ -54,7 +54,8 @@ export interface SyncLogEntry {
   success: boolean;
   newMatches: number;
   updatedMatches: number;
-  warnings: string[];
+  // El backend guarda las advertencias como un único texto (motivos unidos por "; ").
+  warnings: string | null;
   errorMessage: string | null;
 }
 

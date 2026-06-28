@@ -248,11 +248,17 @@ function SyncSection() {
         {running ? "Sincronizando..." : "Sincronizar ahora"}
       </button>
       {logs.map((log) => (
-        <div className="admin-row" key={log.id}>
+        <div className="admin-row admin-row--player" key={log.id}>
           <span>
             {new Date(log.ranAt).toLocaleString("es-CL")} —{" "}
             {log.success ? `OK (${log.newMatches} nuevos, ${log.updatedMatches} actualizados)` : "Falló"}
           </span>
+          {log.errorMessage && (
+            <span style={{ color: "#e35d5d", fontSize: "0.8rem", flex: "1 1 100%" }}>⚠ {log.errorMessage}</span>
+          )}
+          {log.warnings && (
+            <span style={{ color: "var(--color-amber)", fontSize: "0.8rem", flex: "1 1 100%" }}>{log.warnings}</span>
+          )}
         </div>
       ))}
       {logs.length === 0 && <p className="muted">Sin corridas registradas todavía.</p>}
