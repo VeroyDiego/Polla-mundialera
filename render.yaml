@@ -1,0 +1,26 @@
+# Blueprint de Render: un solo Web Service que compila el frontend, compila el
+# backend y arranca Express sirviendo ambos (API en /api/* y la SPA en el resto).
+# Las variables marcadas con sync:false se cargan manualmente en el dashboard
+# (son secretos: no van en el repo).
+services:
+  - type: web
+    name: polla-mundial-26
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm run build
+    startCommand: npm run migrate && npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FOOTBALL_DATA_API_TOKEN
+        sync: false
+      - key: FIXTURES_PROVIDER
+        value: football-data
+      - key: FOOTBALL_DATA_COMPETITION_CODE
+        value: WC
+      - key: SYNC_INTERVAL_MINUTES
+        value: "45"

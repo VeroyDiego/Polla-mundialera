@@ -102,17 +102,26 @@ Sin contraseñas: cada persona elige su nombre (o crea uno nuevo) la primera vez
 
 Los pronósticos de los demás participantes permanecen ocultos hasta el horario de inicio (kickoff) de cada partido — sólo se ve la cantidad de gente que ya pronosticó. Al llegar la hora de inicio se revelan automáticamente, sin necesidad de recargar nada del lado del servidor (es un cálculo en cada request, no un job aparte).
 
-## Despliegue (sugerido, gratis)
+## Despliegue (sugerido, gratis) — un solo servicio
 
-1. **Base de datos**: crear un proyecto Postgres gratis en Neon o Supabase, copiar el `DATABASE_URL`.
-2. **Backend**: Render *Web Service* (free tier).
-   - Build command: `npm install && npm run build`
+En producción el backend Express sirve **también** el frontend ya compilado (mismo
+origen). Eso significa **un solo servicio que desplegar**, sin CORS ni una segunda
+URL que coordinar. El `package.json` raíz orquesta todo y hay un `render.yaml` listo.
+
+1. **Base de datos**: crear un proyecto Postgres gratis en Neon o Supabase y copiar el `DATABASE_URL`.
+2. **Crear las tablas**: aplicar `server/db/schema.sql` una vez. La forma más simple sin
+   terminal es pegarlo en el *SQL Editor* del panel de Neon/Supabase. (En el deploy también
+   se aplica solo: el *start command* corre `npm run migrate`, que es idempotente.)
+3. **Servicio web** en Render (free tier), opción **Blueprint** (lee `render.yaml`) o manual:
+   - Build command: `npm run build`  *(compila frontend y backend)*
    - Start command: `npm run migrate && npm run start`
-   - Variables de entorno: las mismas de `server/.env.example`
-3. **Frontend**: Render *Static Site* (o Vercel/Netlify).
-   - Build command: `npm install && npm run build`
-   - Publish directory: `dist`
-   - Variable de entorno: `VITE_API_URL` apuntando a la URL del backend desplegado
-4. Antes del primer uso, correr `npm run seed` una vez (localmente con `DATABASE_URL` apuntando a la base de producción, o vía un shell de Render) para cargar los partidos confirmados de Dieciseisavos.
+   - Health check path: `/api/health`
+   - Variables de entorno (secretas, cargar a mano): `DATABASE_URL`, `ADMIN_PASSWORD`,
+     `FOOTBALL_DATA_API_TOKEN`. Las no-secretas (`FIXTURES_PROVIDER`, `FOOTBALL_DATA_COMPETITION_CODE`,
+     `SYNC_INTERVAL_MINUTES`) ya vienen en `render.yaml`.
+4. **Cargar los partidos semilla**: correr `npm run seed` una vez (desde un shell de Render, o
+   pegando los `INSERT` de los 10 partidos en el SQL Editor). Es idempotente: no duplica.
 
-Más detalle de por qué se eligió esta combinación (y la alternativa de mover el sync a un Render *Cron Job* separado para mayor confiabilidad) en `ARCHITECTURE.md`.
+> El free tier de Render duerme tras ~15 min sin tráfico y puede saltarse alguna corrida del
+> sync mientras duerme — aceptable para una polla de amigos. Para 100% de confiabilidad, ver
+> en `ARCHITECTURE.md` la alternativa de un *Cron Job* separado o un plan siempre activo.

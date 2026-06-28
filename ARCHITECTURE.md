@@ -83,7 +83,15 @@ El panel de administración sí pide una contraseña compartida simple: el middl
 
 ## Despliegue
 
+Se despliega como **un solo servicio**: el backend Express sirve la API en `/api/*` y, en
+producción, también el frontend ya compilado (`client/dist`) como estáticos con fallback SPA
+(ver `server/src/app.ts`). Mismo origen → sin CORS ni una segunda URL que coordinar. El
+`package.json` raíz orquesta el build (compila cliente y servidor) y el arranque, y hay un
+`render.yaml` (Blueprint) con la configuración. En desarrollo siguen siendo dos procesos
+(Vite en :5173 + API en :4000), conectados por `VITE_API_URL` y CORS; en producción el
+cliente llama a rutas relativas (`/api/...`) porque `VITE_API_URL` queda sin definir.
+
 - **Base de datos**: Postgres gratis en [Neon](https://neon.tech) o [Supabase](https://supabase.com) (sin tarjeta de crédito). Connection string en `DATABASE_URL`.
-- **Backend**: Render *Web Service* (free tier), build command `npm install && npm run build`, start command `npm run migrate && npm run start`. `npm run migrate` aplica `db/schema.sql` (idempotente, `CREATE TABLE IF NOT EXISTS`), así que puede correr en cada deploy sin riesgo. El cron de sync corre dentro del mismo proceso (`node-cron`), por lo que el free tier de Render (que duerme tras 15 min sin tráfico) puede saltarse corridas mientras está dormido — aceptable para una polla de amigos; si se quiere 100% confiable, mover el sync a un Render *Cron Job* separado que llame a un endpoint protegido, o pasar a un plan pago siempre activo (~US$7/mes).
-- **Frontend**: Render *Static Site* (o Vercel/Netlify) sirviendo el build de Vite, con `VITE_API_URL` apuntando al backend.
+- **Servicio web**: Render *Web Service* (free tier), build command `npm run build`, start command `npm run migrate && npm run start`, health check `/api/health`. `npm run migrate` aplica `db/schema.sql` (idempotente, `CREATE TABLE IF NOT EXISTS`), así que puede correr en cada deploy sin riesgo. El cron de sync corre dentro del mismo proceso (`node-cron`), por lo que el free tier de Render (que duerme tras 15 min sin tráfico) puede saltarse corridas mientras está dormido — aceptable para una polla de amigos; si se quiere 100% confiable, mover el sync a un Render *Cron Job* separado que llame a un endpoint protegido, o pasar a un plan pago siempre activo (~US$7/mes).
+- **Robustez**: las rutas usan `express-async-errors` + un middleware de error final, de modo que un fallo puntual de base de datos (ej. Neon despertando de su pausa) devuelve un 500 y el proceso sigue vivo, en vez de tumbar la app.
 - Variables de entorno: ver `.env.example` en `server/` y `client/`.

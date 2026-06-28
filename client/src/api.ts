@@ -1,6 +1,9 @@
 import type { LeaderboardEntry, MatchView, Player, PlayerWithCount, Settings, SyncLogEntry } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+// En producción el backend sirve también el frontend (mismo origen), así que la
+// base queda vacía y las llamadas van a rutas relativas (/api/...). En desarrollo
+// se define VITE_API_URL (client/.env) para apuntar al backend en otro puerto.
+const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 const PLAYER_ID_KEY = "polla26.playerId";
 const ADMIN_PASSWORD_KEY = "polla26.adminPassword";

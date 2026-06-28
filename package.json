@@ -1,0 +1,14 @@
+{
+  "name": "polla-mundial-26",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Polla Mundial 26 — un solo servicio: el backend Express sirve también el frontend.",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client && npm run build --prefix server",
+    "migrate": "npm run migrate --prefix server",
+    "start": "npm run start --prefix server"
+  }
+}
