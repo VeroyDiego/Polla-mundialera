@@ -19,6 +19,13 @@ const STAGE_TO_ROUND: Record<string, Round> = {
 const FINISHED_STATUSES = new Set(["FINISHED", "AWARDED"]);
 const IGNORED_STATUSES = new Set(["CANCELLED", "POSTPONED", "SUSPENDED"]);
 
+/** Parsea un header numérico; devuelve undefined si falta o no es número. */
+function toInt(value: string | null): number | undefined {
+  if (value === null) return undefined;
+  const n = Number.parseInt(value, 10);
+  return Number.isNaN(n) ? undefined : n;
+}
+
 interface FootballDataMatch {
   id: number;
   utcDate: string;
@@ -70,11 +77,25 @@ export class FootballDataProvider implements FixturesProvider {
       clearTimeout(timeout);
     }
 
+    // football-data.org expone el estado del rate limit en los headers de cada
+    // respuesta. Los leemos para avisar antes de chocar con el límite (free tier:
+    // 10 req/min) y para dar un tiempo de espera útil cuando devuelve 429.
+    const remaining = toInt(response.headers.get("X-Requests-Available-Minute"));
+    const resetSeconds = toInt(response.headers.get("X-RequestCounter-Reset"));
+
     if (response.status === 429) {
-      throw new Error("football-data.org devolvió 429 (rate limit excedido)");
+      const waitHint = resetSeconds !== undefined ? ` Reintentar en ~${resetSeconds}s.` : "";
+      throw new Error(`football-data.org devolvió 429 (rate limit excedido).${waitHint}`);
     }
     if (!response.ok) {
       throw new Error(`football-data.org respondió con status ${response.status}`);
+    }
+
+    if (remaining !== undefined && remaining <= 1) {
+      const resetHint = resetSeconds !== undefined ? ` (se reinicia en ~${resetSeconds}s)` : "";
+      this.options.onWarning?.(
+        `Cuota de football-data.org casi agotada este minuto: quedan ${remaining} llamada(s)${resetHint}.`
+      );
     }
 
     let body: FootballDataResponse;
