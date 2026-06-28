@@ -9,6 +9,7 @@ import { attachPlayer } from "./middleware/requirePlayer.js";
 import { playersRouter } from "./routes/players.js";
 import { matchesRouter } from "./routes/matches.js";
 import { leaderboardRouter } from "./routes/leaderboard.js";
+import { settingsRouter } from "./routes/settings.js";
 import { adminRouter } from "./routes/admin.js";
 
 // Ubicación del build del frontend. El server compilado vive en server/dist/, así
@@ -26,6 +27,7 @@ export function createApp() {
   app.use("/api/players", playersRouter);
   app.use("/api/matches", matchesRouter);
   app.use("/api/leaderboard", leaderboardRouter);
+  app.use("/api/settings", settingsRouter);
   app.use("/api/admin", adminRouter);
 
   // En producción servimos el frontend ya compilado desde el mismo proceso (mismo

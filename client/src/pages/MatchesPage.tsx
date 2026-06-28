@@ -35,8 +35,19 @@ export function MatchesPage() {
     byRound.get(match.round)?.push(match);
   }
 
+  // Partidos que todavía no empiezan y que aún no pronosticaste: nudge para no
+  // quedar afuera por olvido.
+  const pendingCount = matches.filter((m) => !m.revealed && m.status !== "FINISHED" && !m.myPrediction).length;
+
   return (
     <div>
+      {pendingCount > 0 && (
+        <div className="pending-banner">
+          ⏳ Te {pendingCount === 1 ? "falta" : "faltan"} <strong>{pendingCount}</strong>{" "}
+          {pendingCount === 1 ? "pronóstico" : "pronósticos"} de {pendingCount === 1 ? "un partido" : "partidos"} que
+          todavía no {pendingCount === 1 ? "empieza" : "empiezan"}.
+        </div>
+      )}
       {ROUND_ORDER.filter((round) => (byRound.get(round)?.length ?? 0) > 0).map((round) => (
         <section key={round}>
           <h2 className="round-heading">{ROUND_LABELS[round]}</h2>

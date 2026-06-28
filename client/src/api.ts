@@ -77,6 +77,7 @@ export const api = {
     }),
 
   getLeaderboard: () => request<LeaderboardEntry[]>("/api/leaderboard"),
+  getSettings: () => request<Settings>("/api/settings"),
 
   adminGetSettings: () => request<Settings>("/api/admin/settings", {}, { admin: true }),
   adminUpdateSettings: (settings: Settings) =>
