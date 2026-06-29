@@ -1,4 +1,5 @@
 import { teamMatchKey, translateToSpanish } from "../teams.js";
+import { PLACEHOLDER_TEAM } from "./fixturesProvider/types.js";
 import type { NormalizedFixture, Round } from "./fixturesProvider/types.js";
 
 export type MatchStatus = "SCHEDULED" | "FINISHED";
@@ -31,6 +32,8 @@ export interface MatchCreateData {
 
 export interface MatchUpdateData {
   externalId?: string;
+  homeTeam?: string;
+  awayTeam?: string;
   kickoff?: Date;
   homeScore?: number;
   awayScore?: number;
@@ -112,6 +115,16 @@ export function computeSyncPlan(existing: ExistingMatchRecord[], fixtures: Norma
 
     if (candidate.kickoff.getTime() !== fixture.kickoff.getTime()) {
       data.kickoff = fixture.kickoff;
+    }
+
+    // Completar/corregir nombres de equipo cuando la fuente ya los define (ej. un
+    // Octavos que estaba "Por definir" y ahora tiene equipos). Nunca se baja un
+    // nombre real a placeholder, ni se tocan los nombres de un partido fijado a mano.
+    if (!candidate.manuallyFixed) {
+      const newHome = translateToSpanish(fixture.homeTeam);
+      const newAway = translateToSpanish(fixture.awayTeam);
+      if (newHome !== PLACEHOLDER_TEAM && newHome !== candidate.homeTeam) data.homeTeam = newHome;
+      if (newAway !== PLACEHOLDER_TEAM && newAway !== candidate.awayTeam) data.awayTeam = newAway;
     }
 
     if (candidate.manuallyFixed) {

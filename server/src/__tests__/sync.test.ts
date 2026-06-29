@@ -53,6 +53,62 @@ describe("computeSyncPlan", () => {
     });
   });
 
+  it("crea un partido de la llave con equipos por definir (placeholder)", () => {
+    const plan = computeSyncPlan(
+      [],
+      [fixture({ externalId: "football-data:2001", round: "ROUND_16", homeTeam: "Por definir", awayTeam: "Por definir" })]
+    );
+    expect(plan.creates).toHaveLength(1);
+    expect(plan.creates[0]).toMatchObject({ round: "ROUND_16", homeTeam: "Por definir", awayTeam: "Por definir" });
+  });
+
+  it("completa los nombres cuando un partido 'Por definir' ya tiene equipos", () => {
+    const placeholder = seedMatch({
+      id: "m16",
+      externalId: "football-data:2001",
+      round: "ROUND_16",
+      homeTeam: "Por definir",
+      awayTeam: "Por definir"
+    });
+    const plan = computeSyncPlan(
+      [placeholder],
+      [fixture({ externalId: "football-data:2001", round: "ROUND_16", homeTeam: "Brazil", awayTeam: "Japan" })]
+    );
+    expect(plan.updates).toHaveLength(1);
+    expect(plan.updates[0].data).toMatchObject({ homeTeam: "Brasil", awayTeam: "Japón" });
+  });
+
+  it("nunca baja un nombre real a 'Por definir'", () => {
+    const real = seedMatch({
+      id: "m16",
+      externalId: "football-data:2001",
+      round: "ROUND_16",
+      homeTeam: "Brasil",
+      awayTeam: "Japón"
+    });
+    const plan = computeSyncPlan(
+      [real],
+      [fixture({ externalId: "football-data:2001", round: "ROUND_16", homeTeam: "Por definir", awayTeam: "Por definir" })]
+    );
+    expect(plan.updates).toHaveLength(0);
+  });
+
+  it("no toca los nombres de un partido fijado a mano", () => {
+    const manual = seedMatch({
+      id: "m16",
+      externalId: "football-data:2001",
+      round: "ROUND_16",
+      homeTeam: "Por definir",
+      awayTeam: "Por definir",
+      manuallyFixed: true
+    });
+    const plan = computeSyncPlan(
+      [manual],
+      [fixture({ externalId: "football-data:2001", round: "ROUND_16", homeTeam: "Brazil", awayTeam: "Japan" })]
+    );
+    expect(plan.updates).toHaveLength(0);
+  });
+
   it("es idempotente: correr el mismo fixture dos veces sobre el resultado ya aplicado no genera cambios", () => {
     const claimed = seedMatch({ externalId: "football-data:1001" });
     const plan = computeSyncPlan([claimed], [fixture()]);

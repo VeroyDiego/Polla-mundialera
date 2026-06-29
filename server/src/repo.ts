@@ -155,6 +155,8 @@ export async function updateMatchFromSync(id: string, data: MatchUpdateData): Pr
   }
 
   if (data.externalId !== undefined) set("external_id", data.externalId);
+  if (data.homeTeam !== undefined) set("home_team", data.homeTeam);
+  if (data.awayTeam !== undefined) set("away_team", data.awayTeam);
   if (data.kickoff !== undefined) set("kickoff", data.kickoff);
   if (data.homeScore !== undefined) set("home_score", data.homeScore);
   if (data.awayScore !== undefined) set("away_score", data.awayScore);

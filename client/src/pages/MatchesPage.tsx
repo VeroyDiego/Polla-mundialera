@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { MatchCard } from "../components/MatchCard";
 import { api } from "../api";
 import type { MatchView, Round } from "../types";
-import { ROUND_LABELS, ROUND_ORDER } from "../types";
+import { PLACEHOLDER_TEAM, ROUND_LABELS, ROUND_ORDER } from "../types";
 
 export function MatchesPage() {
   const [matches, setMatches] = useState<MatchView[]>([]);
@@ -37,7 +37,14 @@ export function MatchesPage() {
 
   // Partidos que todavía no empiezan y que aún no pronosticaste: nudge para no
   // quedar afuera por olvido.
-  const pendingCount = matches.filter((m) => !m.revealed && m.status !== "FINISHED" && !m.myPrediction).length;
+  const pendingCount = matches.filter(
+    (m) =>
+      !m.revealed &&
+      m.status !== "FINISHED" &&
+      !m.myPrediction &&
+      m.homeTeam !== PLACEHOLDER_TEAM &&
+      m.awayTeam !== PLACEHOLDER_TEAM
+  ).length;
 
   return (
     <div>

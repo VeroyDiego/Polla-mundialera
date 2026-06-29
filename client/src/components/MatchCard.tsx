@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { DigitCellInput, DigitCellStatic, DigitSeparator } from "./DigitCell";
 import { formatKickoff } from "../utils/time";
 import type { MatchView } from "../types";
+import { PLACEHOLDER_TEAM } from "../types";
 import { ApiError, api } from "../api";
 
 interface MatchCardProps {
@@ -32,7 +33,10 @@ export function MatchCard({ match, onSaved }: MatchCardProps) {
     return () => clearTimeout(timer);
   }, [kickoffMs, kickoffReached]);
 
-  const locked = match.revealed || kickoffReached;
+  // Partido de la llave cuyos equipos aún no se definen: se muestra pero no se
+  // puede pronosticar hasta que el cruce esté armado.
+  const isPlaceholder = match.homeTeam === PLACEHOLDER_TEAM || match.awayTeam === PLACEHOLDER_TEAM;
+  const locked = match.revealed || kickoffReached || isPlaceholder;
   const canSave = !locked && homeScore !== "" && awayScore !== "" && !saving;
 
   async function handleSave() {
@@ -82,7 +86,7 @@ export function MatchCard({ match, onSaved }: MatchCardProps) {
           <DigitSeparator />
           <DigitCellStatic value={match.awayScore ?? 0} correct />
         </div>
-      ) : (
+      ) : isPlaceholder ? null : (
         <div className="match-prediction-row">
           <DigitCellInput
             value={homeScore}
@@ -109,7 +113,11 @@ export function MatchCard({ match, onSaved }: MatchCardProps) {
         </>
       )}
 
-      {locked && !match.predictions && (
+      {isPlaceholder && (
+        <p className="match-hint">Cruce por definir: vas a poder pronosticar cuando se sepa quiénes juegan.</p>
+      )}
+
+      {locked && !isPlaceholder && match.status !== "FINISHED" && !match.predictions && (
         <p className="match-hint">A ciegas hasta el pitazo: los pronósticos se revelan al iniciar el partido.</p>
       )}
 

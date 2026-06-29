@@ -22,18 +22,20 @@ Toda la integración vive detrás de un adaptador (`server/src/services/fixtures
 
 ### Mapeo de fases (rounds)
 
-football-data.org expone el campo `stage` en sus partidos. Para el Mundial 2026 (48 equipos) se asume el siguiente mapeo hacia nuestro enum `Round`:
+football-data.org expone el campo `stage` en sus partidos. Para el Mundial 2026 (48 equipos), mapeo **confirmado contra la API real** hacia nuestro enum `Round`:
 
-| `stage` de la API (asumido) | `Round` interno | Ronda en español |
+| `stage` de la API | `Round` interno | Ronda en español |
 |---|---|---|
-| `ROUND_OF_32` | `ROUND_32` | Dieciseisavos de Final |
-| `ROUND_OF_16` / `LAST_16` | `ROUND_16` | Octavos de Final |
+| `LAST_32` (`ROUND_OF_32`) | `ROUND_32` | Dieciseisavos de Final |
+| `LAST_16` (`ROUND_OF_16`) | `ROUND_16` | Octavos de Final |
 | `QUARTER_FINALS` | `QUARTERFINAL` | Cuartos de Final |
 | `SEMI_FINALS` | `SEMIFINAL` | Semifinal |
 | `THIRD_PLACE` | `THIRD_PLACE` | Partido por el tercer lugar |
 | `FINAL` | `FINAL` | Final |
 
-**Importante:** el nombre exacto del valor `stage` para la ronda de 32 es una suposición razonable (el formato de 48 equipos es nuevo en 2026 y no hay documentación verificada al momento de escribir esto). El mapeo está centralizado en `server/src/services/fixturesProvider/footballDataProvider.ts` (`STAGE_TO_ROUND`) — si la API real usa otro string, **se corrige en un solo lugar**. Cualquier `stage` no reconocido se registra como advertencia en el `SyncLog` y el partido se omite (no rompe la corrida).
+La fase de grupos (`GROUP_STAGE`) y similares se ignoran (no son parte de la polla). El mapeo está centralizado en `server/src/services/fixturesProvider/footballDataProvider.ts` (`STAGE_TO_ROUND`) — si la API cambiara un string, **se corrige en un solo lugar**. Cualquier `stage` no reconocido se registra como advertencia en el `SyncLog` (con el detalle de qué devolvió la API) y el partido se omite, sin romper la corrida.
+
+**Llave completa con placeholders:** los partidos de rondas que todavía no tienen equipos definidos (ej. un Octavos cuyo cruce depende de partidos no jugados) se cargan igual, con nombre provisional `"Por definir"` (constante `PLACEHOLDER_TEAM`), usando el `id` estable de football-data como `externalId`. Así se ve la llave entera. En sincronizaciones posteriores, cuando la fuente asigna los equipos reales, el merge actualiza los nombres (nunca al revés: no baja un nombre real a placeholder, ni toca un partido fijado a mano). En el cliente, un partido "Por definir" se muestra pero no se puede pronosticar hasta que se arme el cruce.
 
 ## Modelo de datos (Postgres, ver `server/db/schema.sql`)
 

@@ -73,3 +73,7 @@ export const ROUND_LABELS: Record<Round, string> = {
 };
 
 export const ROUND_ORDER: Round[] = ["ROUND_32", "ROUND_16", "QUARTERFINAL", "SEMIFINAL", "THIRD_PLACE", "FINAL"];
+
+// Nombre de los equipos de partidos de la llave aún sin definir (debe coincidir
+// con PLACEHOLDER_TEAM del backend).
+export const PLACEHOLDER_TEAM = "Por definir";

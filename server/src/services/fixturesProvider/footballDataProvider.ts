@@ -1,15 +1,17 @@
+import { PLACEHOLDER_TEAM } from "./types.js";
 import type { FixturesProvider, FixtureStatus, NormalizedFixture, Round } from "./types.js";
 
 /**
  * Mapeo del campo `stage` de football-data.org hacia nuestro enum interno.
- * El valor para la ronda de 32 (nueva en el formato de 48 equipos de 2026)
- * es una suposición razonable a falta de documentación verificada — ver
- * ARCHITECTURE.md. Si la API real usa otro string, se corrige aquí.
+ * Confirmado contra la API real del Mundial 2026 (formato de 48 equipos):
+ * los Dieciseisavos se llaman `LAST_32`. Si la API cambiara un nombre, se
+ * corrige acá en un solo lugar.
  */
 const STAGE_TO_ROUND: Record<string, Round> = {
+  LAST_32: "ROUND_32",
   ROUND_OF_32: "ROUND_32",
-  ROUND_OF_16: "ROUND_16",
   LAST_16: "ROUND_16",
+  ROUND_OF_16: "ROUND_16",
   QUARTER_FINALS: "QUARTERFINAL",
   SEMI_FINALS: "SEMIFINAL",
   THIRD_PLACE: "THIRD_PLACE",
@@ -18,6 +20,9 @@ const STAGE_TO_ROUND: Record<string, Round> = {
 
 const FINISHED_STATUSES = new Set(["FINISHED", "AWARDED"]);
 const IGNORED_STATUSES = new Set(["CANCELLED", "POSTPONED", "SUSPENDED"]);
+// Fases que no son parte de la polla (eliminatoria): se ignoran en silencio,
+// sin marcarlas como "ronda desconocida".
+const IGNORED_STAGES = new Set(["GROUP_STAGE", "LEAGUE_STAGE", "PRELIMINARY_ROUND", "PLAYOFFS", "QUALIFICATION"]);
 
 /** Parsea un header numérico; devuelve undefined si falta o no es número. */
 function toInt(value: string | null): number | undefined {
@@ -112,12 +117,12 @@ export class FootballDataProvider implements FixturesProvider {
     const fixtures: NormalizedFixture[] = [];
     const stageCounts = new Map<string, number>();
     const unknownStages = new Set<string>();
-    let missingTeams = 0;
 
     for (const match of body.matches) {
       stageCounts.set(match.stage, (stageCounts.get(match.stage) ?? 0) + 1);
 
       if (IGNORED_STATUSES.has(match.status)) continue;
+      if (IGNORED_STAGES.has(match.stage)) continue;
 
       const round = STAGE_TO_ROUND[match.stage];
       if (!round) {
@@ -125,12 +130,11 @@ export class FootballDataProvider implements FixturesProvider {
         continue;
       }
 
-      const homeTeam = match.homeTeam?.name ?? match.homeTeam?.shortName;
-      const awayTeam = match.awayTeam?.name ?? match.awayTeam?.shortName;
-      if (!homeTeam || !awayTeam) {
-        missingTeams += 1;
-        continue;
-      }
+      // Partidos de la llave cuyos equipos aún no se definen entran igual, con
+      // nombre provisional. La fuente externa los completa en sincronizaciones
+      // posteriores (el emparejamiento es por externalId estable).
+      const homeTeam = match.homeTeam?.name ?? match.homeTeam?.shortName ?? PLACEHOLDER_TEAM;
+      const awayTeam = match.awayTeam?.name ?? match.awayTeam?.shortName ?? PLACEHOLDER_TEAM;
 
       const status: FixtureStatus = FINISHED_STATUSES.has(match.status) ? "FINISHED" : "SCHEDULED";
 
@@ -146,21 +150,14 @@ export class FootballDataProvider implements FixturesProvider {
       });
     }
 
-    // Diagnóstico: si no salió nada utilizable (o hubo rondas no reconocidas),
-    // registramos en el SyncLog qué devolvió realmente la API (cuántos partidos y
-    // con qué nombres de `stage`), para poder ajustar el mapeo de un vistazo. En
-    // operación normal (todo reconocido y con partidos) no agrega ruido.
-    if (fixtures.length === 0 || unknownStages.size > 0) {
+    // Diagnóstico: sólo si aparece una ronda que no sabemos mapear (algo
+    // inesperado de la API). En operación normal no agrega ruido.
+    if (unknownStages.size > 0) {
       const stageBreakdown =
         [...stageCounts.entries()].map(([stage, count]) => `${stage}: ${count}`).join(", ") || "ninguno";
-      const unknownNote =
-        unknownStages.size > 0 ? `. Rondas no reconocidas: ${[...unknownStages].join(", ")}` : "";
       this.options.onWarning?.(
-        `football-data devolvió ${body.matches.length} partido(s) [${stageBreakdown}]; ${fixtures.length} utilizable(s)${unknownNote}`
+        `football-data devolvió ${body.matches.length} partido(s) [${stageBreakdown}]; ${fixtures.length} utilizable(s). Rondas no reconocidas: ${[...unknownStages].join(", ")}`
       );
-    }
-    if (missingTeams > 0) {
-      this.options.onWarning?.(`${missingTeams} partido(s) sin nombre de equipo, omitidos.`);
     }
 
     return fixtures;
